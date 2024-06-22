@@ -6,50 +6,62 @@ import (
 	"time"
 )
 
-type QueryStats struct {
-	TotalQueries        int
+type Stats struct {
+	queryStats
+	QueryErrorStats
+}
+
+type queryStats struct {
+	TotalSuccess        int
 	TotalProcessingTime time.Duration
 	MinQueryTime        time.Duration
 	MedianQueryTime     time.Duration
 	AvgQueryTime        time.Duration
 	MaxQueryTime        time.Duration
-	QueryWorkerStats    map[int]*QueryWorkerStats
+	QueryWorkerStats    map[int]*queryWorkerStats
 }
 
-type QueryWorkerStats struct {
-	QueryStats
-	QueryHostnameStats map[string]*QueryStats
+type queryWorkerStats struct {
+	queryStats
+	QueryHostnameStats map[string]*queryStats
 }
 
-type QueryError struct {
-	Err      error
-	RawQuery string
+type QueryErrorStats struct {
+	TotalErrs     int
+	QueryTaskErrs []QueryTaskErr
 }
 
-func (qs QueryStats) String() string {
+func (qs Stats) String() string {
 	return fmt.Sprintf(
-		"Number of queries processed: %d\n"+
+		"\nSTATS\n"+
+			"\nTotal Queries: %d"+
+			"\nNumber of queries successfully processed: %d\n"+
 			"Total processing time: %v\n"+
 			"Minimum query time: %v\n"+
 			"Median query time: %v\n"+
 			"Average query time: %v\n"+
-			"Maximum query time: %v",
-		qs.TotalQueries,
+			"Maximum query time: %v\n"+
+			"Total Errors: %d\n",
+		qs.TotalSuccess+qs.TotalErrs,
+		qs.TotalSuccess,
 		qs.TotalProcessingTime,
 		qs.MinQueryTime,
 		qs.MedianQueryTime,
 		qs.AvgQueryTime,
 		qs.MaxQueryTime,
+		qs.TotalErrs,
 	)
 }
 
-func (qs *QueryStats) CalculateStats(queryTaskResults []QueryTaskResult) {
-	totalQueries := len(queryTaskResults)
+func (qs *Stats) CalculateStats(queryTaskResults []QueryTaskResult, queryTaskErrs []QueryTaskErr) {
+	qs.TotalSuccess = len(queryTaskResults)
+	qs.TotalErrs = len(queryTaskErrs)
+	qs.QueryTaskErrs = queryTaskErrs
 
-	if totalQueries == 0 {
+	if qs.TotalSuccess == 0 {
 		return
 	}
-	queryTimes := make([]time.Duration, 0, totalQueries)
+	queryTimes := make([]time.Duration, 0, qs.TotalSuccess)
 	queryWorkerTimes := make(map[int][]time.Duration)
 	queryHostnameTimes := make(map[int]map[string][]time.Duration)
 
@@ -73,18 +85,18 @@ func (qs *QueryStats) CalculateStats(queryTaskResults []QueryTaskResult) {
 	qs.calculateAllStats(queryTimes, queryWorkerTimes, queryHostnameTimes)
 }
 
-func (qs *QueryStats) calculateAllStats(queryTimes []time.Duration, queryWorkerTimes map[int][]time.Duration, queryHostnameTimes map[int]map[string][]time.Duration) {
+func (qs *queryStats) calculateAllStats(queryTimes []time.Duration, queryWorkerTimes map[int][]time.Duration, queryHostnameTimes map[int]map[string][]time.Duration) {
 	qs.calculateStats(queryTimes)
-	qs.QueryWorkerStats = make(map[int]*QueryWorkerStats)
+	qs.QueryWorkerStats = make(map[int]*queryWorkerStats)
 
 	for worker, queryWorkerTime := range queryWorkerTimes {
-		workerStats := QueryWorkerStats{}
+		workerStats := queryWorkerStats{}
 		workerStats.calculateStats(queryWorkerTime)
 		qs.QueryWorkerStats[worker] = &workerStats
-		qs.QueryWorkerStats[worker].QueryHostnameStats = make(map[string]*QueryStats)
+		qs.QueryWorkerStats[worker].QueryHostnameStats = make(map[string]*queryStats)
 
 		for hostname, queryHostnameTime := range queryHostnameTimes[worker] {
-			hostnameStats := QueryStats{}
+			hostnameStats := queryStats{}
 			hostnameStats.calculateStats(queryHostnameTime)
 			qs.QueryWorkerStats[worker].QueryHostnameStats[hostname] = &hostnameStats
 		}
@@ -92,7 +104,7 @@ func (qs *QueryStats) calculateAllStats(queryTimes []time.Duration, queryWorkerT
 	}
 }
 
-func (qs *QueryStats) calculateStats(queryTimes []time.Duration) {
+func (qs *queryStats) calculateStats(queryTimes []time.Duration) {
 	totalQueries := len(queryTimes)
 	if totalQueries == 0 {
 		return
@@ -120,7 +132,6 @@ func (qs *QueryStats) calculateStats(queryTimes []time.Duration) {
 		medianQueryTime = (queryTimes[totalQueries/2-1] + queryTimes[totalQueries/2]) / 2
 	}
 
-	qs.TotalQueries = totalQueries
 	qs.TotalProcessingTime = totalProcessingTime
 	qs.MinQueryTime = minQueryTime
 	qs.MedianQueryTime = medianQueryTime

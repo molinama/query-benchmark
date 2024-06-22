@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/molinama/timescale/src/model"
 )
 
 type QueryParamsRepository struct {
@@ -19,11 +21,12 @@ func NewQueryParamsRepository(db *sql.DB) (*QueryParamsRepository, error) {
 	}, nil
 }
 
-func (repository *QueryParamsRepository) RawQuery(params *QueryParams) (time.Duration, error) {
+func (repository *QueryParamsRepository) RawQuery(params *model.QueryParams) (time.Duration, error) {
 	start := time.Now()
-	_, err := repository.db.Query(params.RawQuery())
+	rows, err := repository.db.Query(params.RawQuery())
 	if err != nil {
-		return -1, err
+		return time.Since(start), err
 	}
+	rows.Close()
 	return time.Since(start), nil
 }

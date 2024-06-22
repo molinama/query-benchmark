@@ -41,7 +41,7 @@ build/
 dist/
 
 # Configuration files
-.env
+#.env
 
 # Coverage files
 coverage.out

@@ -1,0 +1,12 @@
+services:
+### Timescale Container
+  timescaledb:
+    container_name: query-benchmark-timescaledb
+    build:
+      context: ./
+      args:
+        - TIMESCALE_PASSWORD=${TIMESCALE_PASSWORD}
+    ports:
+      - "${TIMESCALE_PORT}:5432"
+    environment:
+      POSTGRES_PASSWORD: ${TIMESCALE_PASSWORD}

@@ -1,7 +1,9 @@
-## WorkerPool Tool README
+# Query Benchmark Tool README
 
-### High-Level Goal
-The WorkerPool tool is a command-line application designed to benchmark `SELECT` query performance across multiple workers/clients against a TimescaleDB instance. The tool accepts input either as a CSV-formatted file or standard input, specifying query parameters and the number of concurrent workers. The tool processes queries concurrently and outputs a summary of the following statistics after processing all queries:
+## High-Level Goal
+
+The Query Benchmark tool is a command-line application designed to benchmark `SELECT` query performance across multiple workers/clients against a TimescaleDB instance. The tool accepts input either as a CSV-formatted file or standard input, specifying query parameters and the number of concurrent workers. The tool processes queries concurrently and outputs a summary of the following statistics after processing all queries:
+
 - Number of queries processed
 - Total processing time across all queries
 - Minimum query time for a single query
@@ -9,58 +11,76 @@ The WorkerPool tool is a command-line application designed to benchmark `SELECT`
 - Average query time
 - Maximum query time
 
-### Installation
+## Installation
 
 1. Clone the repository:
+
     ```sh
-    git clone https://github.com/yourusername/workerpool.git
-    cd workerpool
+    git clone https://github.com/molinama/query-benchmark.git
+    
+    cd query-benchmark
     ```
 
-2. Build the application:
-    ```sh
-    go build -o workerpool main.go
-    ```
+## Usage
 
-### Usage
+To use the Query Benchmark tool, you should to specify the path to the CSV file containing query parameters and optionally the number of concurrent workers.
 
-To use the WorkerPool tool, you need to specify the path to the CSV file containing query parameters and optionally the number of concurrent workers and the database connection string.
+### Command-line Arguments
 
-#### Command-line Arguments:
-- `-csv` : The file path to the CSV file containing query parameters.
+- `-csv` : The file path to the CSV file containing query parameters (default: query_params.csv).
 - `-workers` : The number of workers for the pool (default: 10).
-- `-db` : The database connection string.
 
-#### Example Command:
+### Example Command
+
 ```sh
-./workerpool -csv=query_params.csv -workers=20 -db="postgres://user:password@localhost:5432/mydb"
+go run main.go -csv=query_params.csv -workers=20
 ```
 
 ### CSV Format
+
 The CSV file should contain the necessary query parameters, including hostname and raw query strings.
 
+```csv
+hostname,start_time,end_time
+host_000008,2017-01-01 08:59:22,2017-01-01 09:59:22
+```
+
 ### Output
+
 After processing the queries, the tool will output the following statistics:
-```
-Number of queries processed: 100
-Total processing time: 1m23.456s
-Minimum query time: 123.456ms
-Median query time: 234.567ms
-Average query time: 345.678ms
-Maximum query time: 456.789ms
+
+```bash
+Total Queries: 200
+Number of queries successfully processed: 200
+Total processing time: 1.764687507s
+Minimum query time: 2.537792ms
+Median query time: 5.300917ms
+Average query time: 8.823437ms
+Maximum query time: 94.558459ms
+Total Errors: 0
 ```
 
-### Example Usage
+### Usage Instructions
 
-1. Prepare a CSV file `query_params.csv`:
-    ```csv
-    hostname,raw_query
-    db1.example.com,SELECT * FROM table1
-    db2.example.com,SELECT * FROM table2
-    ...
+1. Start Timescaledb
+
+    ```sh
+    make start-timescaledb
     ```
 
-2. Run the application:
+2. Run the application
+
     ```sh
-    ./workerpool -csv=query_params.csv -workers=10 -db="postgres://user:password@localhost:5432/mydb"
+    make run
+    ```
+
+    > If you want to use your own csv file, use the "csv" variable to run.
+    >
+    > ```sh
+    > make run csv=filepath
+
+3. Stop Timescaledb
+
+    ```sh
+    make stop-timescaledb
     ```

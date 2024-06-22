@@ -2,7 +2,7 @@ package worker
 
 import (
 	"log"
-	"time"
+	"sync"
 
 	"github.com/molinama/timescale/src/model"
 	"github.com/molinama/timescale/src/repository"
@@ -10,31 +10,43 @@ import (
 
 type QueryTask struct {
 	repository repository.Repository
-	params     *repository.QueryParams
+	params     *model.QueryParams
 	results    chan<- model.QueryTaskResult
+	errs       chan<- model.QueryTaskErr
+	wg         *sync.WaitGroup
 }
 
-func NewQueryTask(repository repository.Repository, params *repository.QueryParams, results chan<- model.QueryTaskResult) *QueryTask {
+func NewQueryTask(config QueryTaskConfig) *QueryTask {
 	return &QueryTask{
-		repository: repository,
-		params:     params,
-		results:    results,
+		repository: config.Repository,
+		params:     config.Params,
+		results:    config.Results,
+		errs:       config.Errs,
+		wg:         &config.WorkerPool.WgTasks,
 	}
 }
 
 func (t *QueryTask) Execute(worker int) {
-	start := time.Now()
-	_, err := t.repository.RawQuery(t.params)
-	if err != nil {
-		log.Printf("Error running query: %v", err)
-	}
+	defer t.wg.Done()
+
+	duration, err := t.repository.RawQuery(t.params)
+	//log.Printf("Query executed: %v", t.params.RawQuery())
 	result := model.QueryTaskResult{
 		Worker:   worker,
 		Hostname: t.params.Hostname,
-		RawQuery: t.params.RawQuery(),
-		Duration: time.Since(start),
-		Err:      err,
+		Duration: duration,
 	}
 
-	t.results <- result
+	if err != nil {
+		queryTaskErr := model.QueryTaskErr{
+			QueryTaskResult: result,
+			RawQuery:        t.params.RawQuery(),
+			Err:             err,
+		}
+		t.errs <- queryTaskErr
+		log.Printf("Error running query: %v", err)
+	} else {
+		t.results <- result
+	}
+
 }
