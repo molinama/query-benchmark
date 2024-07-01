@@ -3,7 +3,7 @@ package model
 import "time"
 
 type QueryTaskResult struct {
-	Worker   int
+	Worker   Worker
 	Hostname string
 	time.Duration
 }

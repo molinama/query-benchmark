@@ -1,46 +1,57 @@
 package worker
 
 import (
+	"context"
 	"log"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/molinama/timescale/src/model"
 )
 
 type MockTask struct {
 	ID        int
 	ResultsCh chan<- time.Duration
+	wg        *sync.WaitGroup
 }
 
-func (mt *MockTask) Execute(worker int) {
+func (mt *MockTask) Execute(worker model.Worker) {
 	start := time.Now()
 	// Simulate variable work time
 	time.Sleep(time.Duration(rand.Intn(10)) * time.Millisecond)
 	duration := time.Since(start)
 	log.Printf("Worker %d executed task %d in %v\n", worker, mt.ID, duration)
 	mt.ResultsCh <- duration
+	mt.wg.Done()
+}
+func (mt *MockTask) Hostname() string {
+	return "host"
 }
 
 func TestWorkerPool(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
 	numberWorkers := 5
 	numberTasks := 10
-	wp := NewWorkerPool(numberTasks, numberWorkers)
+	wp := NewWorkerPool(ctx, numberTasks, numberWorkers)
 	resultsCh := make(chan time.Duration, numberTasks)
-	var wg sync.WaitGroup
+
+	// Start the worker pool
+	wp.Start()
 
 	// Create and add tasks
 	for i := 0; i < numberTasks; i++ {
 		task := &MockTask{
 			ID:        i,
 			ResultsCh: resultsCh,
+			wg:        &wp.WgTasks,
 		}
-		wp.Add(task)
-		wg.Add(1)
+		workerId := rand.Intn(numberWorkers-1) + 1
+		go wp.Add(model.Worker(workerId), task)
 	}
 
-	// Start the worker pool
-	wp.Start()
+	time.Sleep(100 * time.Millisecond)
 
 	// Collect results
 	var results []time.Duration
@@ -50,22 +61,18 @@ func TestWorkerPool(t *testing.T) {
 			resultMu.Lock()
 			results = append(results, res)
 			resultMu.Unlock()
-			wg.Done()
 		}
 	}()
 
-	// Wait for all tasks to complete
-	wg.Wait()
-
 	// Stop the worker pool
-	wp.Stop()
+	wp.Stop(cancel)
 
 	// Ensure no more results are sent to the channel
 	close(resultsCh)
 
 	// Ensure all workers stopped
 	select {
-	case <-wp.quit:
+	case <-wp.ctx.Done():
 		t.Log("Worker pool stopped successfully")
 	default:
 		t.Error("Worker pool did not stop as expected")
@@ -78,11 +85,12 @@ func TestWorkerPool(t *testing.T) {
 }
 
 func BenchmarkWorkerPool(b *testing.B) {
+	ctx, cancel := context.WithCancel(context.Background())
 	numberWorkers := 10
 	numberTasks := 1000
 
 	// Initialize the worker pool
-	wp := NewWorkerPool(numberTasks, numberWorkers)
+	wp := NewWorkerPool(ctx, numberTasks, numberWorkers)
 	resultsCh := make(chan time.Duration, numberTasks)
 	var wg sync.WaitGroup
 
@@ -99,7 +107,8 @@ func BenchmarkWorkerPool(b *testing.B) {
 				ResultsCh: resultsCh,
 			}
 			wg.Add(1)
-			go wp.Add(task)
+			workerId := rand.Intn(numberWorkers-1) + 1
+			go wp.Add(model.Worker(workerId), task)
 		}
 
 		// Collect results
@@ -119,7 +128,7 @@ func BenchmarkWorkerPool(b *testing.B) {
 	}
 
 	// Stop the worker pool
-	wp.Stop()
+	wp.Stop(cancel)
 
 	// Ensure no more results are sent to the channel
 	close(resultsCh)

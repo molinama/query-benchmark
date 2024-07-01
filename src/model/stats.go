@@ -18,7 +18,7 @@ type queryStats struct {
 	MedianQueryTime     time.Duration
 	AvgQueryTime        time.Duration
 	MaxQueryTime        time.Duration
-	QueryWorkerStats    map[int]*queryWorkerStats
+	QueryWorkerStats    map[Worker]*queryWorkerStats
 }
 
 type queryWorkerStats struct {
@@ -62,8 +62,8 @@ func (qs *Stats) CalculateStats(queryTaskResults []QueryTaskResult, queryTaskErr
 		return
 	}
 	queryTimes := make([]time.Duration, 0, qs.TotalSuccess)
-	queryWorkerTimes := make(map[int][]time.Duration)
-	queryHostnameTimes := make(map[int]map[string][]time.Duration)
+	queryWorkerTimes := make(map[Worker][]time.Duration)
+	queryHostnameTimes := make(map[Worker]map[string][]time.Duration)
 
 	for _, result := range queryTaskResults {
 		queryTimes = append(queryTimes, result.Duration)
@@ -85,9 +85,9 @@ func (qs *Stats) CalculateStats(queryTaskResults []QueryTaskResult, queryTaskErr
 	qs.calculateAllStats(queryTimes, queryWorkerTimes, queryHostnameTimes)
 }
 
-func (qs *queryStats) calculateAllStats(queryTimes []time.Duration, queryWorkerTimes map[int][]time.Duration, queryHostnameTimes map[int]map[string][]time.Duration) {
+func (qs *queryStats) calculateAllStats(queryTimes []time.Duration, queryWorkerTimes map[Worker][]time.Duration, queryHostnameTimes map[Worker]map[string][]time.Duration) {
 	qs.calculateStats(queryTimes)
-	qs.QueryWorkerStats = make(map[int]*queryWorkerStats)
+	qs.QueryWorkerStats = make(map[Worker]*queryWorkerStats)
 
 	for worker, queryWorkerTime := range queryWorkerTimes {
 		workerStats := queryWorkerStats{}

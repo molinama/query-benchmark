@@ -24,7 +24,7 @@ func TestCalculateStats(t *testing.T) {
 				MedianQueryTime:     2 * time.Second,
 				AvgQueryTime:        2 * time.Second,
 				MaxQueryTime:        2 * time.Second,
-				QueryWorkerStats: map[int]*queryWorkerStats{
+				QueryWorkerStats: map[Worker]*queryWorkerStats{
 					1: {
 						queryStats: queryStats{
 							TotalSuccess:        1,
@@ -62,7 +62,7 @@ func TestCalculateStats(t *testing.T) {
 				MedianQueryTime:     2 * time.Second,
 				AvgQueryTime:        7 * time.Second / 3,
 				MaxQueryTime:        4 * time.Second,
-				QueryWorkerStats: map[int]*queryWorkerStats{
+				QueryWorkerStats: map[Worker]*queryWorkerStats{
 					1: {
 						queryStats: queryStats{
 							TotalSuccess:        3,
@@ -109,7 +109,7 @@ func TestCalculateStats(t *testing.T) {
 				MedianQueryTime:     (3*time.Second + 4*time.Second) / 2,
 				AvgQueryTime:        14 * time.Second / 4,
 				MaxQueryTime:        5 * time.Second,
-				QueryWorkerStats: map[int]*queryWorkerStats{
+				QueryWorkerStats: map[Worker]*queryWorkerStats{
 					1: {
 						queryStats: queryStats{
 							TotalSuccess:        2,
@@ -174,7 +174,7 @@ func TestCalculateStats(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			qs := Stats{}
-			qs.QueryWorkerStats = make(map[int]*queryWorkerStats)
+			qs.QueryWorkerStats = make(map[Worker]*queryWorkerStats)
 			qs.CalculateStats(tt.queryTaskResults, nil)
 			if !reflect.DeepEqual(qs, tt.expectedQueryStats) {
 				t.Errorf("CalculateStats() = %+v, want %+v", qs, tt.expectedQueryStats)

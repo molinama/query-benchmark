@@ -6,7 +6,7 @@ import (
 )
 
 type QueryTaskConfig struct {
-	Repository *repository.QueryParamsRepository
+	Repository repository.Repository
 	Params     *model.QueryParams
 	Results    chan<- model.QueryTaskResult
 	Errs       chan<- model.QueryTaskErr

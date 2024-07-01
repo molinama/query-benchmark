@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/molinama/timescale/src/model"
@@ -12,10 +13,20 @@ type QueryParamsRepository struct {
 	db *sql.DB
 }
 
-func NewQueryParamsRepository(db *sql.DB) (*QueryParamsRepository, error) {
-	if db == nil {
+func NewQueryParamsRepository() (*QueryParamsRepository, error) {
+	// Connect to the database
+	dbConfig, err := loadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("cannot create repository: %w", err)
+	}
+
+	db, err := sql.Open("pgx", dbConfig.dbConnString)
+	if err != nil {
 		return nil, errors.New("cannot create repository")
 	}
+	db.SetMaxOpenConns(100)
+	db.SetMaxIdleConns(100)
+
 	return &QueryParamsRepository{
 		db: db,
 	}, nil

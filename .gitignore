@@ -46,6 +46,9 @@ dist/
 # Coverage files
 coverage.out
 
+# Profiling
+*.pprof
+
 # Test binary and results
 *.test
 *.cover

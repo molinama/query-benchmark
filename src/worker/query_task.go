@@ -1,9 +1,9 @@
 package worker
 
 import (
-	"log"
 	"sync"
 
+	"github.com/molinama/timescale/src/logging"
 	"github.com/molinama/timescale/src/model"
 	"github.com/molinama/timescale/src/repository"
 )
@@ -26,7 +26,11 @@ func NewQueryTask(config QueryTaskConfig) *QueryTask {
 	}
 }
 
-func (t *QueryTask) Execute(worker int) {
+func (t *QueryTask) Hostname() string {
+	return t.params.Hostname
+}
+
+func (t *QueryTask) Execute(worker model.Worker) {
 	defer t.wg.Done()
 
 	duration, err := t.repository.RawQuery(t.params)
@@ -44,7 +48,7 @@ func (t *QueryTask) Execute(worker int) {
 			Err:             err,
 		}
 		t.errs <- queryTaskErr
-		log.Printf("Error running query: %v", err)
+		logging.SugaredLog.Errorf("Error running query: %v", err.Error())
 	} else {
 		t.results <- result
 	}
